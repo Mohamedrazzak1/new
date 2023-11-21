@@ -7,7 +7,7 @@ spec:
     apps: webapps
   ports:
     - name: http
-      port: 80
+      port: 8080
       nodePort: 32000
   type: NodePort
 ---
