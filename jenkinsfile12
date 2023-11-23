@@ -22,7 +22,7 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    def mvnHome = tool name: 'Maven', type: 'maven'
+                    def mvnHome = tool name: 'maven', type: 'maven'
                     
                     // Print Maven version for debugging
                     sh "${mvnHome}/bin/mvn -version"
