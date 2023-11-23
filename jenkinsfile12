@@ -5,7 +5,7 @@ pipeline {
         AWS_REGION = 'ap-south-1'
         ECR_REPO_URL = '967822984907.dkr.ecr.ap-south-1.amazonaws.com'
         dockerImage = "webapp01"
-        ECR_REPO = '967822984907.dkr.ecr.ap-south-1.amazonaws.com'
+        ECR_REPO = '967822984907.dkr.ecr.ap-south-1.amazonaws.com/webapp01'
 
     }  
     stages {
@@ -103,7 +103,7 @@ pipeline {
                     
                     // Push the Docker image to ECR
                     //docker push 967822984907.dkr.ecr.ap-south-1.amazonaws.com/kart:latest
-                    sh "${ECR_REPO}:${dockerTag}"
+                    sh "docker push ${ECR_REPO}:${dockerTag}"
                 }
             }
         }
