@@ -5,6 +5,8 @@ pipeline {
         AWS_REGION = 'ap-south-1'
         ECR_REPO_URL = '967822984907.dkr.ecr.ap-south-1.amazonaws.com'
         dockerImage = "webapp01"
+        ECR_REPO = '967822984907.dkr.ecr.ap-south-1.amazonaws.com'
+
     }  
     stages {
         stage('Maven Build') {
@@ -63,17 +65,8 @@ pipeline {
                 script {
                     // Define Docker image name and tag
                     def dockerTag = "${env.BUILD_NUMBER}"
-                    
                     // Build and tag the Docker image
-                   // def dockerImage = docker.build("venkateshdhanap/myweb:0.0.2:dockerTag", "--file Dockerfile .")
-                    sh "docker build -t webapp01:${dockerTag} ."
-                    
-                    // Authenticate Docker to ECR
-                    //sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO_URL}"
-                    
-                    // Tag the Docker image for ECR
-                    //sh "docker tag ${dockerImage}:${dockerTag} ${ECR_REPO_URL}:${dockerTag}"
-                    
+                    sh "docker build -t webapp01:${dockerTag} ."  
                     // Push the Docker image to ECR
                     //sh "docker push ${ECR_REPO_URL}:${dockerTag}"
                 }
@@ -106,11 +99,11 @@ pipeline {
                     
                     // Tag the Docker image for ECR
                     //docker tag kart:latest 967822984907.dkr.ecr.ap-south-1.amazonaws.com/kart:latest
-                    sh "docker tag webapp01:${dockerTag} 967822984907.dkr.ecr.ap-south-1.amazonaws.com/webapp01:${dockerTag}"
+                    sh "docker tag ${dockerImage}:${dockerTag} ${ECR_REPO}:${dockerTag}"
                     
                     // Push the Docker image to ECR
                     //docker push 967822984907.dkr.ecr.ap-south-1.amazonaws.com/kart:latest
-                    sh "docker push 967822984907.dkr.ecr.ap-south-1.amazonaws.com/webapp01:${dockerTag}"
+                    sh "${ECR_REPO}:${dockerTag}"
                 }
             }
         }
@@ -120,7 +113,7 @@ pipeline {
                 // Update Kubernetes deployment manifest with dynamic image tag
                 script {
                     def dockerTag = "${env.BUILD_NUMBER}"
-                    sh "sed -i 's|image: my-docker-image:latest|image: 967822984907.dkr.ecr.ap-south-1.amazonaws.com/webapp01:${dockerTag}|' main.yml"
+                    sh "sed -i 's|image: my-docker-image:latest|image: ${ECR_REPO}:${dockerTag}|' main.yml"
                     sh "kubectl apply -f main.yml"
                 }
             }
