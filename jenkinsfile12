@@ -5,7 +5,8 @@ pipeline {
         AWS_REGION = 'ap-south-1'
         ECR_REPO_URL = '967822984907.dkr.ecr.ap-south-1.amazonaws.com'
         dockerImage = "webapp01"
-    }    
+    }  
+    stages {
         stage('Maven Build') {
             steps {
                 // Maven build
