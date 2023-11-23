@@ -5,19 +5,7 @@ pipeline {
         AWS_REGION = 'ap-south-1'
         ECR_REPO_URL = '967822984907.dkr.ecr.ap-south-1.amazonaws.com'
         dockerImage = "webapp01"
-    }
-
-    stages {
-        stage('Source Code Checkout stage Checkout') {
-            steps {
-                // Checkout source code from a Git repository
-                git 'https://github.com/dinesh-byte/my-app.git'
-                
-                // If using a specific branch, you can specify it
-                //git branch: 'master'
-            }
-        }
-    
+    }    
         stage('Maven Build') {
             steps {
                 // Maven build
