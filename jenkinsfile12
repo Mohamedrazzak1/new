@@ -11,7 +11,7 @@ pipeline {
             steps {
                 // Maven build
                 script {
-                    def mvnHome = tool 'Maven'
+                    def mvnHome = tool 'maven'
                     def mvnCMD = "${mvnHome}/bin/mvn"
 
                     sh "${mvnCMD} clean install"
