@@ -1,153 +1,335 @@
 pipeline {
     agent any
+    environment {
+        // Define your AWS region and ECR repository URL
+        AWS_REGION = 'ap-south-1'
+        ECR_REPO_URL = '967822984907.dkr.ecr.ap-south-1.amazonaws.com'
+        dockerImage = "webapp01"
+    }
+
     stages {
-        stage('SCM Checkout'){
+        stage('Source Code Checkout stage Checkout') {
             steps {
-            git branch: 'main', url: 'https://github.com/naresh26git/microservices.git'
-            sh 'ls'
+                // Checkout source code from a Git repository
+                git 'https://github.com/dinesh-byte/my-app.git'
+                
+                // If using a specific branch, you can specify it
+                //git branch: 'master'
+            }
+        }
+    
+        stage('Maven Build') {
+            steps {
+                // Maven build
+                script {
+                    def mvnHome = tool 'Maven'
+                    def mvnCMD = "${mvnHome}/bin/mvn"
+
+                    sh "${mvnCMD} clean install"
+                    // Add additional Maven goals or options as needed
+                }
             }
         }
         stage('SonarQube Analysis') {
             steps {
-                parallel (
-                    'node application': {
-                        script {
-                            dir('cart-microservice-nodejs') {
-                                def scannerHome = tool 'sonarscanner4'
-                                 withSonarQubeEnv('sonar-pro') {
-                                     sh "${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=cart-nodejs"
-                                 }
-                            }
-                            dir('ui-web-app-reactjs') {
-                                def scannerHome = tool 'sonarscanner4';
-                                withSonarQubeEnv('sonar-pro') {
-                                    sh "${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=ui-reactjs"
-                                }
-                            }
-                        }
-                    },
-                    'spring boot application': {
-                        script {
-                            dir('offers-microservice-spring-boot') {
-                                def mvn = tool 'maven3';
-                                withSonarQubeEnv('sonar-pro') {
-                                    sh "${mvn}/bin/mvn clean verify sonar:sonar -Dsonar.projectKey=offers-spring-boot -Dsonar.projectName=offers-spring-boot"
-                                }
-                            }
-                            dir('shoes-microservice-spring-boot') {
-                                def mvn = tool 'maven3';
-                                withSonarQubeEnv('sonar-pro') {
-                                    sh "${mvn}/bin/mvn clean verify sonar:sonar -Dsonar.projectKey=shoe-spring-boot -Dsonar.projectName=shoes-spring-boot"
-                                }
-                            }
-                            dir('zuul-api-gateway') {
-                                def mvn = tool 'maven3';
-                                withSonarQubeEnv('sonar-pro') {
-                                    sh "${mvn}/bin/mvn clean verify sonar:sonar -Dsonar.projectKey=zuul-api -Dsonar.projectName=zuul-api"
-                                }
-                            }
-                        }
-                    },
-                    'python app': {
-                        script{
-                            dir('wishlist-microservice-python') {
-                                def scannerHome = tool 'sonarscanner4';
-                                withSonarQubeEnv('sonar-pro') {
-                                    sh """/var/lib/jenkins/tools/hudson.plugins.sonar.SonarRunnerInstallation/sonarscanner4/bin/sonar-scanner \
-                                    -D sonar.projectVersion=1.0-SNAPSHOT \
-                                    -D sonar.sources=. \
-                                    -D sonar.login=admin \
-                                    -D sonar.password=admin1234 \
-                                    -D sonar.projectKey=project \
-                                    -D sonar.projectName=wishlist-py \
-                                    -D sonar.inclusions=index.py \
-                                    -D sonar.sourceEncoding=UTF-8 \
-                                    -D sonar.language=python \
-                                    -D sonar.host.url=http://3.88.84.20:9000/"""
-                                }
-                            }
-                        }
+                script {
+                    def mvnHome = tool name: 'Maven', type: 'maven'
+                    
+                    // Print Maven version for debugging
+                    sh "${mvnHome}/bin/mvn -version"
+
+                    // Print SonarQube Scanner version for debugging
+                    sh "${tool 'sonar'}/bin/sonar-scanner --version"
+
+                    // Run SonarQube analysis
+                    withSonarQubeEnv('SonarQubeServer') {
+                        sh "${mvnHome}/bin/mvn sonar:sonar"
                     }
-                )
+                    }
+                }
             }
-        }
-        stage ('Build Docker Image and push'){
+        stage('Quality Gate Check') {
             steps {
-                parallel (
-                    'docker login': {
-                        withCredentials([string(credentialsId: 'dockerPass', variable: 'dockerPassword')]) {
-                            sh "docker login -u bhagaths -p ${dockerPassword}"
-                        }
-                    },
-                    'ui-web-app-reactjs': {
-                        dir('ui-web-app-reactjs'){
-                            sh """
-                            docker build -t bhagaths/ui:v1 .
-                            docker push bhagaths/ui:v1
-                            docker rmi bhagaths/ui:v1
-                            """
-                        }
-                    },
-                    'zuul-api-gateway' : {
-                        dir('zuul-api-gateway'){
-                            sh """
-                            docker build -t bhagaths/api:v1 .
-                            docker push bhagaths/api:v1
-                            docker rmi bhagaths/api:v1
-                            """
-                        }
-                    },
-                    'offers-microservice-spring-boot': {
-                        dir('offers-microservice-spring-boot'){
-                            sh """
-                            docker build -t bhagaths/spring:v1 .
-                            docker push bhagaths/spring:v1
-                            docker rmi bhagaths/spring:v1
-                            """
-                        }
-                    },
-                    'shoes-microservice-spring-boot': {
-                        dir('shoes-microservice-spring-boot'){
-                            sh """
-                            docker build -t bhagaths/spring:v2 .
-                            docker push bhagaths/spring:v2
-                            docker rmi bhagaths/spring:v2
-                            """
-                        }
-                    },
-                    'cart-microservice-nodejs': {
-                        dir('cart-microservice-nodejs'){
-                            sh """
-                            docker build -t bhagaths/ui:v2 .
-                            docker push bhagaths/ui:v2
-                            docker rmi bhagaths/ui:v2
-                            """
-                        }
-                    },
-                    'wishlist-microservice-python': {
-                        dir('wishlist-microservice-python'){
-                            sh """
-                            docker build -t bhagaths/python:v1 .
-                            docker push bhagaths/python:v1
-                            docker rmi bhagaths/python:v1
-                            """
-                        }
-                    }
-                )
+                sleep (60)
+                timeout(time: 1, unit: 'HOURS') {
+                    // Wait for the Quality Gate to be computed and check its status
+               }
+            }
+        
+        post {
+ 
+        failure {
+            echo 'sending email notification from jenkins'
+    
+                step([$class: 'Mailer',notifyEveryUnstableBuild: true,
+                recipients: emailextrecipients([[$class: 'CulpritsRecipientProvider'],
+                [$class: 'RequesterRecipientProvider']])])
+
+                }
+            }
+    
+        }
+        stage('Docker Build') {
+            steps {
+                script {
+                    // Define Docker image name and tag
+                    def dockerTag = "${env.BUILD_NUMBER}"
+                    
+                    // Build and tag the Docker image
+                   // def dockerImage = docker.build("venkateshdhanap/myweb:0.0.2:dockerTag", "--file Dockerfile .")
+                    sh "docker build -t webapp01:${dockerTag} ."
+                    
+                    // Authenticate Docker to ECR
+                    //sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO_URL}"
+                    
+                    // Tag the Docker image for ECR
+                    //sh "docker tag ${dockerImage}:${dockerTag} ${ECR_REPO_URL}:${dockerTag}"
+                    
+                    // Push the Docker image to ECR
+                    //sh "docker push ${ECR_REPO_URL}:${dockerTag}"
+                }
             }
         }
-        stage ('Deploy on k8s'){
-            steps{
-                parallel (
-                    'deploy on k8s': {
-                        script {
-                            withKubeCredentials(kubectlCredentials: [[ credentialsId: 'k8s', namespace: 'ms' ]]) {
-                                sh 'kubectl get ns' 
-                                sh 'kubectl apply -f kubernetes/yamlfile'
-                            }
-                        }
+
+        stage('Remove Previous Docker Image') {
+            steps {
+                script {
+                    // Define Docker image name
+                    def previousTag = env.BUILD_NUMBER.toInteger() - 1
+                    // Remove the previous Docker image
+                    sh "docker rmi -f ${dockerImage}:${previousTag}"
+                }
+            }
+        }
+        stage('ECR Image Push') {
+            steps {
+                script {
+                    def dockerTag = "${env.BUILD_NUMBER}"
+                    // Define Docker image name and tag
+                    //def buildImage = "${dockerImage}:${dockerTag}"
+                                    // Authenticate Docker to ECR using AWS access key and secret key
+                    //withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
+
+                    
+                    //aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 967822984907.dkr.ecr.ap-south-1.amazonaws.com
+                    // Authenticate Docker to ECR
+                    sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO_URL}"
+                    
+                    // Tag the Docker image for ECR
+                    //docker tag kart:latest 967822984907.dkr.ecr.ap-south-1.amazonaws.com/kart:latest
+                    sh "docker tag webapp01:${dockerTag} 967822984907.dkr.ecr.ap-south-1.amazonaws.com/webapp01:${dockerTag}"
+                    
+                    // Push the Docker image to ECR
+                    //docker push 967822984907.dkr.ecr.ap-south-1.amazonaws.com/kart:latest
+                    sh "docker push 967822984907.dkr.ecr.ap-south-1.amazonaws.com/webapp01:${dockerTag}"
+                }
+            }
+        }
+    
+        stage('Update Kubernetes Deployment') {
+            steps {
+                // Update Kubernetes deployment manifest with dynamic image tag
+                script {
+                    def dockerTag = "${env.BUILD_NUMBER}"
+                    sh "sed -i 's|image: my-docker-image:latest|image: 967822984907.dkr.ecr.ap-south-1.amazonaws.com/webapp01:${dockerTag}|' main.yml"
+                    sh "kubectl apply -f main.yml"
+                }
+            }
+        }
+    }
+
+}
+
+
+---
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Source Code Checkout stage Checkout') {
+            steps {
+                // Checkout source code from a Git repository
+                git 'https://github.com/dinesh-byte/my-app.git'
+                
+                // If using a specific branch, you can specify it
+                //git branch: 'master'
+            }
+        }
+    
+        stage('Maven Build') {
+            steps {
+                // Maven build
+                script {
+                    def mvnHome = tool 'Maven'
+                    def mvnCMD = "${mvnHome}/bin/mvn"
+
+                    sh "${mvnCMD} clean install"
+                    // Add additional Maven goals or options as needed
+                }
+            }
+        }
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    def mvnHome = tool name: 'Maven', type: 'maven'
+                    
+                    // Print Maven version for debugging
+                    sh "${mvnHome}/bin/mvn -version"
+
+                    // Print SonarQube Scanner version for debugging
+                    sh "${tool 'sonar'}/bin/sonar-scanner --version"
+
+                    // Run SonarQube analysis
+                    withSonarQubeEnv('SonarQubeServer') {
+                        sh "${mvnHome}/bin/mvn sonar:sonar"
                     }
-                )
+                    }
+                }
+            }
+        stage('Quality Gate Check') {
+            steps {
+                sleep (60)
+                timeout(time: 1, unit: 'HOURS') {
+                    // Wait for the Quality Gate to be computed and check its status
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline successfully completed!'
+        }
+
+        failure {
+            echo 'Pipeline failed! Check the build logs for details.'
+        }
+    }
+}
+
+-----
+pipeline {
+    agent any
+    environment {
+        // Define your AWS region and ECR repository URL
+        AWS_REGION = 'ap-south-1'
+        ECR_REPO_URL = '967822984907.dkr.ecr.ap-south-1.amazonaws.com'
+    }
+
+    stages {
+        stage('Source Code Checkout stage Checkout') {
+            steps {
+                // Checkout source code from a Git repository
+                git 'https://github.com/dinesh-byte/my-app.git'
+                
+                // If using a specific branch, you can specify it
+                //git branch: 'master'
+            }
+        }
+    
+        stage('Maven Build') {
+            steps {
+                // Maven build
+                script {
+                    def mvnHome = tool 'Maven'
+                    def mvnCMD = "${mvnHome}/bin/mvn"
+
+                    sh "${mvnCMD} clean install"
+                    // Add additional Maven goals or options as needed
+                }
+            }
+        }
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    def mvnHome = tool name: 'Maven', type: 'maven'
+                    
+                    // Print Maven version for debugging
+                    sh "${mvnHome}/bin/mvn -version"
+
+                    // Print SonarQube Scanner version for debugging
+                    sh "${tool 'sonar'}/bin/sonar-scanner --version"
+
+                    // Run SonarQube analysis
+                    withSonarQubeEnv('SonarQubeServer') {
+                        sh "${mvnHome}/bin/mvn sonar:sonar"
+                    }
+                    }
+                }
+            }
+        stage('Quality Gate Check') {
+            steps {
+                sleep (60)
+                timeout(time: 1, unit: 'HOURS') {
+                    // Wait for the Quality Gate to be computed and check its status
+                }
+            }
+        
+        post {
+ 
+        failure {
+            echo 'sending email notification from jenkins'
+    
+                step([$class: 'Mailer',notifyEveryUnstableBuild: true,
+                recipients: emailextrecipients([[$class: 'CulpritsRecipientProvider'],
+                [$class: 'RequesterRecipientProvider']])])
+
+                }
+            }
+    
+        }
+        stage('Docker Build') {
+            steps {
+                script {
+                    // Define Docker image name and tag
+                    def dockerImage = "dineshdkr/webapp01"
+                    def dockerTag = "${env.BUILD_NUMBER}"
+                    
+                    // Build and tag the Docker image
+                    sh "docker build -t ${dockerImage}:${dockerTag} ."
+                    
+                    // Authenticate Docker to ECR
+                    //sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO_URL}"
+                    
+                    // Tag the Docker image for ECR
+                    //sh "docker tag ${dockerImage}:${dockerTag} ${ECR_REPO_URL}:${dockerTag}"
+                    
+                    // Push the Docker image to ECR
+                    //sh "docker push ${ECR_REPO_URL}:${dockerTag}"
+                }
+            }
+        }
+
+        stage('Remove Previous Docker Image') {
+            steps {
+                script {
+                    // Define Docker image name
+                    def previousTag = env.BUILD_NUMBER.toInteger() - 1
+                    def dockerImage = "dineshdkr/webapp01"
+                    
+                    // Remove the previous Docker image
+                    sh "docker rmi -f ${dockerImage}:${previousTag}"
+                }
+            }
+        }
+        stage('ECR Image Push') {
+            steps {
+                script {
+                    // Define Docker image name and tag
+                    def dockerImage = "dineshdkr/webapp01"
+                    def dockerTag = "${env.BUILD_NUMBER}"
+                
+                    //aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 967822984907.dkr.ecr.ap-south-1.amazonaws.com
+                    // Authenticate Docker to ECR
+                    sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO_URL}"
+                    
+                    // Tag the Docker image for ECR
+                    sh "docker tag ${dockerImage}:${dockerTag} ${ECR_REPO_URL}:${dockerTag}"
+                    
+                    // Push the Docker image to ECR
+                    sh "docker push ${ECR_REPO_URL}:${dockerTag}"
+                }
             }
         }
     }
