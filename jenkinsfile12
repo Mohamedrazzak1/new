@@ -66,7 +66,7 @@ pipeline {
                     // Define Docker image name and tag
                     def dockerTag = "${env.BUILD_NUMBER}"
                     // Build and tag the Docker image
-                    sh "docker build -t webapp01:${dockerTag} ."  
+                    sh "docker build -t ${dockerImage}:${dockerTag} ."  
                     // Push the Docker image to ECR
                     //sh "docker push ${ECR_REPO_URL}:${dockerTag}"
                 }
