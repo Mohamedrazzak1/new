@@ -12,12 +12,12 @@ pipeline {
                 script {
                     def mvnHome = tool 'maven'
                     def mvnCMD = "${mvnHome}/bin/mvn"
-
                     sh "${mvnCMD} clean install"
                     // Add additional Maven goals or options as needed
                 }
             }
         }
+    
         stage('Docker Build') {
             steps {
                 script {
@@ -38,6 +38,7 @@ pipeline {
                     sh "docker push  ${dockerrepo}/${dockerImage}:${env.BUILD_NUMBER} "  
                     // Push the Docker image to ECR
                     //sh "docker push ${ECR_REPO_URL}:${dockerTag}"
+                    }
                 }
             }
         }
@@ -55,7 +56,6 @@ pipeline {
             steps {
                 // Update Kubernetes deployment manifest with dynamic image tag
                 script {
-                    def dockerTag = "${env.BUILD_NUMBER}"
                     sh "sed -i 's|image: my-docker-image:latest|image: ${dockerrepo}/${dockerImage}:${previousTag}|' main.yml"
                 }
             }
@@ -63,5 +63,3 @@ pipeline {
 
         }
     }
-
-}
