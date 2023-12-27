@@ -2,10 +2,10 @@ pipeline {
     agent any
     environment {
         // Define your AWS region and ECR repository URL
-        AWS_REGION = 'ap-south-1'
-        ECR_REPO_URL = '967822984907.dkr.ecr.ap-south-1.amazonaws.com'
+        AWS_REGION = 'us-east-1'
+        ECR_REPO_URL = '320188775919.dkr.ecr.us-east-1.amazonaws.com'
         dockerImage = "webapp01"
-        ECR_REPO = '967822984907.dkr.ecr.ap-south-1.amazonaws.com/webapp01'
+        ECR_REPO = '320188775919.dkr.ecr.us-east-1.amazonaws.com/webapp01'
 
     }  
     stages {
