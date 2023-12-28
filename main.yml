@@ -20,6 +20,6 @@ metadata:
 spec:
   containers:
   - name: pod1
-    image: dineshdkr/webapp01:11
+    image: my-docker-image:latest
     ports:
       - containerPort: 8080   
